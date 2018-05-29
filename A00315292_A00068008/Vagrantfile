@@ -1,0 +1,70 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+ 
+VAGRANTFILE_API_VERSION = "2"
+ 
+firstDisk = './firstDisk.vdi'
+secondDisk = './secondDisk.vdi'
+thirdDisk = './thirdDisk.vdi'
+ 
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.ssh.insert_key = false
+  config.vm.define :master do |master|
+    master.vm.box = "ubuntu/xenial64"
+    master.vm.network :private_network, ip: "192.168.56.101"
+    master.vm.provider :virtualbox do |vb|
+      vb.gui = true 
+      vb.customize ["modifyvm", :id, "--memory", "1024","--cpus", "1", "--name", "3master" ]
+      unless File.exist?(firstDisk)
+        vb.customize ['createhd', '--filename', firstDisk, '--variant', 'Fixed', '--size', 5 * 1024]
+      end
+      vb.customize ['storageattach', :id,  '--storagectl', 'SCSI', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', firstDisk]
+    end
+    master.vm.provision "shell", inline: <<-SHELL
+      echo "node0" > /etc/hostname
+      hostname node0
+    SHELL
+    master.vm.provision "shell", path: "install/configurations.sh"
+    master.vm.provision "shell", path: "install/docker.sh"
+    # k8sm.vm.provision "shell", path: "install/compose.sh"
+    master.vm.provision "shell", path: "install/glusterfs.sh"
+  end
+  config.vm.define :node_1 do |node1|
+    node1.vm.box = "ubuntu/xenial64"
+    node1.vm.network :private_network, ip: "192.168.56.102"
+    node1.vm.provider :virtualbox do |vb|
+      vb.gui = true 
+      vb.customize ["modifyvm", :id, "--memory", "512","--cpus", "1", "--name", "3node_1" ]
+      unless File.exist?(secondDisk)
+        vb.customize ['createhd', '--filename', secondDisk, '--variant', 'Fixed', '--size', 5 * 1024]
+      end
+      vb.customize ['storageattach', :id,  '--storagectl', 'SCSI', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', secondDisk]
+    end
+    node1.vm.provision "shell", inline: <<-SHELL
+      echo "node1" > /etc/hostname
+      hostname node1
+    SHELL
+    node1.vm.provision "shell", path: "install/configurations.sh"
+    node1.vm.provision "shell", path: "install/docker.sh"
+    node1.vm.provision "shell", path: "install/glusterfs.sh"
+  end
+  config.vm.define :node_2 do |node2|
+    node2.vm.box = "ubuntu/xenial64"
+    node2.vm.network :private_network, ip: "192.168.56.103"
+    node2.vm.provider :virtualbox do |vb|
+      vb.gui = true 
+      vb.customize ["modifyvm", :id, "--memory", "512","--cpus", "1", "--name", "3node_2" ]
+      unless File.exist?(thirdDisk)
+        vb.customize ['createhd', '--filename', thirdDisk, '--variant', 'Fixed', '--size', 5 * 1024]
+      end
+      vb.customize ['storageattach', :id,  '--storagectl', 'SCSI', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', thirdDisk]
+    end
+    node2.vm.provision "shell", inline: <<-SHELL
+      echo "node2" > /etc/hostname
+      hostname node2
+    SHELL
+    node2.vm.provision "shell", path: "install/configurations.sh"
+    node2.vm.provision "shell", path: "install/docker.sh"
+    node2.vm.provision "shell", path: "install/glusterfs.sh"
+  end
+end
